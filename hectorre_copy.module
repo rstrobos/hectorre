@@ -1,0 +1,223 @@
+<?php
+
+//hook_init()
+function hello_init(){
+	//drupal_set_message("Hello");
+
+}
+
+//hook_menu()
+function hello_menu(){
+	$items=array();
+	
+	$items['addresident']=array(
+
+		'title'=>'Add New Resident',
+		'description'=>'Add a new resident',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showResidentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+	);
+
+	$items['addAppointment']=array(
+
+		'title'=>'Add New Appointment',
+		'description'=>'Add a new appointment',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showAppointmentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+
+
+	);
+
+	return $items;
+}
+/**
+* Implements the page that allows you to submit a new resident
+*/
+function hello_showResidentForm(){
+	$form= array();
+
+	$form['name']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents name',
+	);
+	
+	$form['gmail']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents gmail',
+	);
+
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+
+	$form['#submit'][]='hello_showResidentForm_submit';
+	return $form;
+}
+
+function hello_showAppointmentForm(){
+	
+	$form=array();
+
+	//todo make a dropdown with each of the resident's names
+	
+	$form['description']=array(
+		
+		'#type'=>'textfield',
+		'#title'=>'Enter Appointment Description'
+	);
+	
+	$form['location']=array(
+		
+		'#type'=>'textfield',
+		'#title'=>'Enter Appointment Location'
+	);
+
+	$date= '2008-12-31 00:00:00';
+
+	$format= 'Y-m-d H:i';
+
+	$form['start_date']= array(
+		'#type'=>'date_select',
+		'#title'=> t('Appointment start time'),
+		'#default_value'=>$date,
+		'#date_format'=>$format,
+		'#date_label_position'=> 'within'
+		);
+
+
+	$form['end_date']= array(
+		'#type'=>'date_select',
+		'#title'=> t('Appointment end time'),
+		'#default_value'=>$date,
+		'#date_format'=>$format,
+		'#date_label_position'=> 'within'
+		);
+
+
+
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+	$form['#submit'][]='hectorre_showAppointmentForm_submit';
+	return $form;
+}
+
+function hectorre_showAppointmentForm_submit($form, &$form_state){
+
+	if($form_state['values']['description']==''){
+		form_set_error('description','Description can not be empty');
+	}
+	if ($form_state['values']['location']==''){
+		form_set_error('location','Location can not be empty');
+	}else{
+		$event= array(
+			'title'=>"Test Event",
+			'start'=>"2013-12-11T150000.000",
+			'end'=>"2013-12-11T170000.000",
+			'description'=>'Test event please ignore'
+		);
+		
+		$gmail_account='staff.hectorreyes@gmail.com';
+
+		$success=gcal_create_event($event, $gmail_account);
+		
+		drupal_set_message($success? success : "Error creating event);
+
+	}
+}
+/*
+function hello_showAppointmentForm_submit_test($form, &$form_state){
+	//todo login with gauth and find the correct values for calendar and event ids
+	
+	if($form_state['values']['description']==''){
+		form_set_error('name','Name can not be empty');
+	}
+	if ($form_state['values']['location']==''){
+		form_set_error('name','Gmail can not be empty');
+	}else{
+
+	$account_name= array(
+		'client_id' => '434556190678.apps.googleusercontent.com',
+		'client_secret' =>'M0IeasQJ48Bk1Rkcvb4IbxWb' ,
+		'developer_key'=> 'AIzaSyDzomCRHB-Iv74eaYn45uIOAjBQQN0urzM',
+		'services'=>'GOOGLE_CALENDAR',
+		'name' =>'HectorReyes',
+	);
+
+	$recurrance= array();
+	
+	$recurrance['Frequency']='ONCE';//in doc it sys 'WEEKLY'
+	
+	//a bunch more recurrances are there if it complains
+
+	$reminders= array(
+		0=> array(
+			'minutes'=>'60',
+			'method'=>'email',
+		),
+		1=> array(
+			
+			'minutes'=>'10',
+			'method'=>'popup',
+		),
+	);
+
+	$params= array(
+		'Summary'=>$form_state['values']['description'],
+		'Timezone'=>'Eastern',//todo
+		'Creator'=> array('Email'=>'staff.hectorreyes@gmail.com', 'DisplayName'=> 'HectorReyesHouse Staff'),
+		'Organizer'=> array('Email'=>'staff.hectorreyes@gmail.com', 'DisplayName'=> 'HectorReyesHouse Staff'),
+		'Recurrance'=>$recurrance,
+		'Start'=>$form_state['values']['start_date'],
+		'Location'=>$form_state['values']['location'],
+		'Description'=>$form_state['values']['description'],
+		'Visibility'=> 'public', //change
+		'End'=> $form_state['values']['end_date'],
+		'Locked'=>FALSE,
+		'ColorId'=>3,
+		'Reminders'=>$reminders,
+		'GuestsCanSeeOtherGuests'=>FALSE,
+		'OriginalStartTime'=> $form_state['values']['start_date'],
+		'GuestsCanInviteOthers'=> FALSE,
+		'PrivateCopy'=> FALSE,
+	);
+	
+	$event=gcal_event_create($params, 'CALEDNAR_ID', $account_name);
+	drupal_show_message($event ? $event : "Event creating failed");
+
+
+	}
+
+}
+*/
+
+function hello_showResidentForm_submit($form, &$form_state){
+	//todo make this create a new user
+	if($form_state['values']['name']==''){
+		form_set_error('name','Description can not be empty');
+	}
+	if ($form_state['values']['gmail']==''){
+		form_set_error('name','Location can not be empty');
+	}else{
+	drupal_set_message($form_state['values']['name']." has been registered. Thank you.");
+	}
+
+	$pass=user_password(8);
+	$form_state['values']['pass']['pass1']=$pass;
+	$form_state['values']['pass']['pass2']=$pass;
+	$form_state['values']['op']=t('Create new account');
+	$form_state['values']['numMonths']=0;
+	drupal_set_message("got here");
+	//drupal_form_submit('user_register', $form_state);
+	
+}

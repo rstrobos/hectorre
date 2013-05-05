@@ -1,0 +1,5 @@
+name= Hectorre
+core= 7.x
+description = This is a test module which will be extended to provide functionality extending the webform module so that google calendar events will be able to be created 
+when webforms are filled out
+

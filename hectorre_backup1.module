@@ -1,0 +1,94 @@
+<?php
+
+//hook_init()
+function hello_init(){
+	//drupal_set_message("Hello");
+
+}
+
+//hook_menu()
+function hello_menu(){
+	$items=array();
+	
+	$items['addresident']=array(
+
+		'title'=>'Add New Resident',
+		'description'=>'Add a new resident',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showResidentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+	);
+
+	$items['addAppointment']=array(
+
+		'title'=>'Add New Appointment',
+		'description'=>'Add a new appointment',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showAppointmentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+
+
+	);
+
+	return $items;
+}
+/**
+* Implements the page that allows you to submit a new resident
+*/
+function hello_showResidentForm(){
+	$form= array();
+
+	$form['name']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents name',
+	);
+	
+	$form['gmail']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents gmail',
+	);
+
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+
+	$form['#submit'][]='hello_showResidentForm_submit';
+	return $form;
+}
+
+function hello_showAppointmentForm(){
+	$form=array();
+	
+	$form['start']=array(
+		'#type'=>'date',
+		'#title'=>'Enter Start date'
+	);
+	
+	$form['end']=array(
+		'#type'=>'date',
+		'#title'=>'Enter end date'
+	);
+
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+	$form['#submit'][]='hello_showAppointmentForm_submit';
+	return $form;
+}
+
+function hello_showAppointmentForm_submit($form, &$form_state){
+	//todo call gcal api and create a new appointment on the map based on this
+	drupal_set_message("Appointment has been saved starting at ".$form_state['values']['start']);
+
+}
+
+
+

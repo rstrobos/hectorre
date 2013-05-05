@@ -1,0 +1,614 @@
+<?php
+
+//hook_init()
+function hello_init(){
+	//drupal_set_message("Hello");
+
+}
+
+//hook_menu()
+function hello_menu(){
+	$items=array();
+	
+	$items['addresident']=array(
+
+		'title'=>'Add New Resident',
+		'description'=>'Add a new resident',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showResidentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+	);
+
+	$items['addAppointment']=array(
+
+		'title'=>'Add New Appointment',
+		'description'=>'Add a new appointment',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hello_showAppointmentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+
+
+	);
+
+	$items['meetingReminder']=array(
+
+		'title'=>'Schedule Meeting Reminder',
+		'description'=>'Click here to add a code which will be sent to the desired resident to collect attendence data',
+		'page callback'=>'drupal_get_form',
+		'page arguments'=>array('hectorre_showMeetingReminderForm'),
+		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'access arguments'=>array('access content'),
+		'type'=>MENU_NORMAL_ITEM
+
+
+	);
+	return $items;
+}
+/**
+* Implements the page that allows you to submit a new resident
+*/
+function hello_showResidentForm(){
+	$form= array();
+
+	$form['name']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents name',
+	);
+	
+	$form['gmail']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents gmail',
+	);
+
+	$form['phone_number']=array(
+		'#type'=>'textfield',
+		'#title'=>'Enter the residents phone number to remind them of appointments',
+	//	'#rules'=>'numeric',
+	);
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+
+	$form['#submit'][]='hello_showResidentForm_submit';
+	return $form;
+}
+
+/**
+* Shows the form for the appointment
+*/
+function hello_showAppointmentForm(){
+	
+	$form=array();
+
+
+	
+	$query = db_select('users','u');
+		$query->fields('u',array('uid','name'));
+		$result= $query->execute();
+		
+	$users=array();	
+	
+	$user[]='---SELECT---';
+	while ($record = $result->fetchAssoc()){
+		if ($record['name']!="admin" And  $record['name']!="staff" And $record['uid']!=0){
+		$users[]=$record['name'];	
+		}
+	}
+
+
+
+	$form['resident_name']= array(
+		'#title' =>t('Resident Name') ,
+		'#type' => 'select',
+		'#desciption' =>'Select the resident whose appointment you would like to schedule.' ,
+		'#options' => $users,
+
+	);
+	$reminders=array();
+	$reminders[]='None';
+	$reminders[]='30 mins before';
+	$reminders[]='1 hour before';
+/**	$form['reminder_one']= array(
+		'#title' =>t('Reminder One') ,
+		'#type' => 'select',
+		'#desciption' =>'Specify how long before the appointment a reminder will be sent' ,
+		'#options' => $reminders,
+
+	);
+	
+
+	$form['reminder_two']= array(
+		'#title' =>t('Reminder Two') ,
+		'#type' => 'select',
+		'#desciption' =>'Specify how long before the appointment a second reminder will be sent' ,
+		'#options' => $reminders,
+
+	);
+*/	
+	$form['description']=array(
+		
+		'#type'=>'textfield',
+		'#title'=>'Enter Appointment Description'
+	);
+	
+/**	$form['location']=array(
+		
+		'#type'=>'textfield',
+		'#title'=>'Enter Appointment Location'
+	);
+*/
+
+	date_default_timezone_set('America/New_York');
+	$date= date('Y-m-d H:i', time());
+
+	$format= 'Y-m-d H:i';
+
+	$form['start_date']= array(
+		'#type'=>'date_select',
+		'#title'=> t('Appointment start time'),
+		'#default_value'=>$date,
+		'#date_format'=>$format,
+		'#date_label_position'=> 'within'
+		);
+
+
+	$form['end_date']= array(
+		'#type'=>'date_select',
+		'#title'=> t('Appointment end time'),
+		'#default_value'=>$date,
+		'#date_format'=>$format,
+		'#date_label_position'=> 'within'
+		);
+
+
+
+	$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+	
+	
+
+	$form['#submit'][]='hectorre_showAppointmentForm_submit';
+	return $form;
+}
+
+function hectorre_showMeetingReminderForm(){
+
+	$form=array();
+
+
+	
+	$query = db_select('users','u');
+		$query->fields('u',array('uid','name'));
+		$result= $query->execute();
+		
+	$users=array();	
+	
+	$user[]='---SELECT---';
+	while ($record = $result->fetchAssoc()){
+		if ($record['name']!="admin" And  $record['name']!="staff" And $record['uid']!=0){
+		$users[]=$record['name'];	
+		}
+	}
+
+
+
+	$form['resident_name']= array(
+		'#title' =>t('Resident Name') ,
+		'#type' => 'select',
+		'#desciption' =>'Select the resident who you would like to send the confirmation code.' ,
+		'#options' => $users,
+
+	);
+
+	$form['confirmation_code']=array(
+		
+		'#type'=>'textfield',
+		'#title'=>'Enter Confirmation Code'
+	);
+
+	date_default_timezone_set('America/New_York');
+
+	$date= date('Y-m-d H:i', time());
+
+	$format= 'Y-m-d H:i';
+	
+	$form['time']= array(
+		'#type'=>'date_select',
+		'#title'=> t('Time to send reminder'),
+		'#default_value'=>$date,
+		'#date_format'=>$format,
+		'#date_label_position'=> 'within'
+	);
+
+		$form['submit']=array(
+		'#type'=>'submit',
+		'#value'=>'Submit'
+	);
+
+	$form['#submit'][]='hectorre_showMeetingForm_submit';
+	return $form;
+}
+/**
+* submits the appointment form
+*/
+function hectorre_showAppointmentForm_submit($form, &$form_state){
+	//also fix the bug that allows invalid input dates (like april 31 etc)
+
+	if($form_state['values']['description']==''){
+		form_set_error('description','Description can not be empty');
+	}
+	elseif ($form_state['values']['location']==''){
+		form_set_error('location','Location can not be empty');
+	}
+	elseif ($form_state['values']['start_date']>=$form_state['values']['end_date']){
+		form_set_error('start_date','Start Date must be before End date');
+
+	}
+	elseif ($form_state['values']['resident_name']=='' Or $form_state['values']['resident_name']==NULL){
+		form_set_error('resident_name', 'Please select a resident');
+	}
+	else{
+		
+
+		
+		$event=array(
+			'Summary'=> $form_state['values']['description'],
+			'Start' => $form_state['values']['start_date'],
+			'End' => $form_state['values']['end_date'],
+			'Timezone'=>'America/New_York',
+		);	
+		
+
+
+
+		$query = db_select('users','u');
+
+		$query->fields('u',array('uid','name'));
+	
+		$result= $query->execute();
+		
+		$resident_id=5;		
+
+
+		$count=0;
+
+	
+	while ($record = $result->fetchAssoc()){
+		//$names="not working";
+
+		if ($record['name']!="admin" And  $record['name']!="staff" And $record['uid']!=0){
+		
+		
+
+		if ($count==$form_state['values']['resident_name']){
+			$resident_id=$record['uid'];	
+			$names=$record['name'];
+		}
+		$count=$count+1;
+		}	
+	}
+
+
+
+		
+
+		$calendar_query=db_select('field_data_field_calendar_id','c');
+	//	$calendar_query->condition('c.entity_id',$resident_id);
+		$calendar_query-> fields('c',array('entity_id','field_calendar_id_value'));
+	$result=$calendar_query->execute();
+	
+//	$temp=150;
+	
+//	$other="hey";
+//	drupal_set_message($resident_id.$temp);
+	
+	while ($record = $result->fetchAssoc()){
+		if ($record['entity_id']==$resident_id){
+			$calendar_id=$record['field_calendar_id_value'];
+	
+		}
+
+
+	}
+
+		
+
+
+
+
+
+
+
+
+		$account_name= gauth_account_load('HectorReyes');
+		$public=gcal_calendar_public($calendar_id, $account_name);
+		$success=gcal_event_create($event, $calendar_id,  $account_name);
+		
+		$private=gcal_calendar_private($calendar_id, $account_name);
+		drupal_set_message($success ? "Appointment Created" :NULL);
+
+	}
+}
+		
+
+
+
+
+
+
+function hello_showResidentForm_submit($form, &$form_state){
+	//todo share this calendar with the users gmail
+
+	//this currently creates a new calendar on the shared calendar 
+	if($form_state['values']['name']==''){
+		form_set_error('name','Description can not be empty');
+	}
+	if ($form_state['values']['gmail']==''){
+		form_set_error('name','Location can not be empty');
+	}
+	if (!is_numeric($form_state['values']['phone_number'])){
+		form_set_error('phone_number', 'Phone number is invalid');
+	}
+	else{
+	
+
+
+	$params= array(
+		'Summary'=>$form_state['values']['name'],
+		'Description'=> 'This is the Calendar for '.$form_state['values']['name'],
+	//	'Id'=>$form_state['values']['name'],
+		'TimeZone'=> 'America/New_York',
+		'Location'=>'Boston',
+			);
+
+	$account_name= gauth_account_load('HectorReyes');
+
+	$cal=gcal_calendar_create($params, $account_name);	
+	
+	$private=gcal_calendar_private($cal['id'],$account_name); 
+
+	$new_user= array(
+		'name'=> $form_state['values']['name'],
+		'pass'=>'tape101',
+		'mail'=>$form_state['values']['gmail'],
+		'signature_format'=>'full_html',
+		'status'=> 1,
+		'timezone'=> 'America/New_York',
+		'init'=> $form_state['values']['gmail'],
+		'Roles'=>'resident',
+		'field_calendar_id'=>
+			array(LANGUAGE_NONE =>
+			array(0 =>
+			array('value'=> $cal['id']))),
+		
+		'field_phone_number'=>
+			array(LANGUAGE_NONE =>
+			array(0 =>
+			array('value'=> $form_state['values']['phone_number']))),
+
+		);
+
+	$account= user_save(NULL, $new_user);
+
+	drupal_set_message($cal ? $form_state['values']['name']." has been registered. Thank you.": "An error has occured, please contanct your system administrator");
+	
+	
+
+	}
+
+
+
+
+///below lies code known terrible even to the worst programmer
+//these lines also dont do anything
+	$pass=user_password(8);
+	$form_state['values']['pass']['pass1']=$pass;
+	$form_state['values']['pass']['pass2']=$pass;
+	$form_state['values']['op']=t('Create new account');
+	$form_state['values']['numMonths']=0;
+	//drupal_form_submit('user_register', $form_state);
+	
+}
+function hectorre_showMeetingForm_submit($form, &$form_state){
+	
+	
+
+
+	date_default_timezone_set('America/New_York');
+	$date= date('Y-m-d H:i', time());
+	if($form_state['values']['confirmation_code']==''){
+		form_set_error('confirmation_code','Confirmation code can not be empty');
+	}
+	elseif ($form_state['values']['time']<$date){
+		form_set_error('start_date','Meeting must be in the future');
+	}
+	else{
+	
+		$query = db_select('users','u');
+
+		$query->fields('u',array('uid','name'));
+	
+		$result= $query->execute();
+		
+		$resident_id=5;		
+
+
+		$count=0;
+
+	
+	while ($record = $result->fetchAssoc()){
+		//$names="not working";
+
+		if ($record['name']!="admin" And  $record['name']!="staff" And $record['uid']!=0){
+		
+		
+
+		if ($count==$form_state['values']['resident_name']){
+			$resident_id=$record['uid'];	
+			$names=$record['name'];
+		//	$phone_number=$record['field_phone_number_value'];
+		}
+		$count=$count+1;
+		}	
+	}
+
+
+		$calendar_query=db_select('field_data_field_phone_number','c');
+	//	$calendar_query->condition('c.entity_id',$resident_id);
+		$calendar_query-> fields('c',array('entity_id','field_phone_number_value'));
+	$result=$calendar_query->execute();
+	
+//	$temp=150;
+	
+//	$other="hey";
+//	drupal_set_message($resident_id.$temp);
+	
+	while ($record = $result->fetchAssoc()){
+		if ($record['entity_id']==$resident_id){
+			$phone_number=$record['field_phone_number_value'];
+	
+		}
+	}
+/**
+
+	$record = new StdClass();
+	$record->confirmation_code= $form_state['values']['confirmation_code'];
+	$record->phone_number= $phone_number;
+	$record->time= $form_state['values']['time'];
+	drupal_write_record('scheduled_meetings', $record);
+	drupal_set_message("Congratulations, a reminder will be sent at ".$form_state['values']['time']);
+
+*/
+	$table_name='scheduledMeetings';
+	$table=db_table_exists($table_name);
+	drupal_set_message($table ? "true" : "false");
+	}
+
+}
+/**
+  * Implements the cron job that automatically checks if there are any appointments 
+  *
+ */
+function hectorre_cron(){
+
+	$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
+	
+	if (time() >=variable_get('cron_hectorre_next_execution', 0)){
+		//sends appointment reminders
+		watchdog('cron_hectorre','cron_hectorre appointment ran');
+		$account_name= gauth_account_load('HectorReyes');
+	
+
+		date_default_timezone_set('America/New_York');
+		$start_date= date('Y-m-d H:i', time());
+		$end_date=date('Y-m-d H:i', time()+60*60);
+	
+		$gmail_account_email='staff.hectorre@gmail.com';
+		$events= gcal_find_events($start_date, $end_date, $gmail_account_email);
+
+
+		$events = gcal_event_get($event_id, $calendar_id, $account_name);
+	//	drupal_set_message($events);
+		foreach($events as $event){
+		//	if ($event['date']<
+			//check if the event occurs in the next X mins and if it does, call a script from voip
+		}
+
+
+
+
+
+
+		//sends out meeting codes
+
+
+		watchdog('cron_hectorre','cron_hectorre meeting ran');
+		$query=db_select('scheduled_meetings','m');
+	//	$query->condition('m.entity_id',$resident_id);
+		$query-> fields('m',array('phone_number','confirmation_code', 'time'));
+		$result=$query->execute();
+	
+		date_default_timezone_set('America/New_York');
+		$date= date('Y-m-d H:i', time()+30*60); //if the meeting occurs within the next half hour
+		foreach($result as $meeting){
+			if ($meeting['time']<$date){
+				//todo insert the voip API that performs the actual call
+				/**$call= new VoipCall();		
+				$phone_number=$result['phone_number'];
+				$call->setDestNumber($phone_number);
+				$text="You have been chosen to distribute the confirmation code at this meeting. The code is ".$result['confirmation_code']; 
+				
+				$script->addSentText($text,$phone_number,'SMS', "Hector Reyes House");
+				
+*/
+				}
+		}
+
+		watchdog('cron_hectorre','cron_hectorre meeting got through the database query');
+
+
+
+
+
+
+
+
+
+
+
+
+		variable_set('cron_hectorre_next_execution', time()+$interval);
+	}
+}
+/**
+function cron_hectorre_meeting_cron(){
+	
+	$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
+	
+	if (time() >=variable_get('cron_hectorre_next_execution', 0)){
+		watchdog('cron_hectorre','cron_hectorre meeting ran');
+		$query=db_select('scheduled_meetings','m');
+	//	$query->condition('m.entity_id',$resident_id);
+		$query-> fields('m',array('phone_number','confirmation_code', 'time'));
+		$result=$query->execute();
+	
+		date_default_timezone_set('America/New_York');
+		$date= date('Y-m-d H:i', time()+30*60); //if the meeting occurs within the next half hour
+		foreach($result as $meeting){
+			if ($meeting['time']<$date){
+				//todo insert the voip API that performs the actual call
+				}
+		}
+		watchdog('cron_hectorre','cron_hectorre meeting got through the database query');
+		variable_set('cron_hectorre_next_execution', time()+$interval);
+	}
+}
+*/
+/**
+  *Implements hook_uninstall()
+  *
+  */
+function hectorre_uninstall(){
+}
+
+/**
+  *Implements hook_enable()
+  *
+  */
+function hectorre_enable(){
+	
+	$table_name='scheduledMeetings';
+	if(db_table_exists($table_name)==FALSE){
+		drupal_install_schema('hectorre');
+	//	drupal_set_message("code ran");
+		//watchdog('hectorre', 'enable ran');
+	}
+}

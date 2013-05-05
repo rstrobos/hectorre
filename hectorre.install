@@ -1,0 +1,44 @@
+<?php 
+/**
+ * Implements hook_schema()
+*/
+function hectorre_schema(){
+	watchdog('hectorre','hectorre_schema is running');
+	$schema['scheduled_meetings']= array(
+		'description'=>'Table which holds the values for scheduled meetings',
+		'fields'=> array(
+			'nid'=> array(
+				'description'=> 'The primary identifier',
+				'type'=>'serial',
+				'unsigned'=> TRUE,
+				'not null'=>TRUE,
+			),
+
+			'phone_number'=> array(
+				'description'=> 'The phone number to send the confirmation code to',
+				'type'=>'int',
+				'unsigned'=> TRUE,
+				'not null'=>TRUE,
+			),
+		
+			'time'=> array(
+				'description'=> 'The time that the confirmation code will be sent',
+				'type'=>'int',
+				'unsigned'=> TRUE,
+				'not null'=> TRUE,
+			),
+
+			'confirmation_code'=> array(
+				'description'=> 'The confirmation code that will be sent',
+				'type'=>'text',
+				'unsigned'=> TRUE,
+				'not null'=> TRUE,
+			),
+		),
+		'unique keys'=> array(
+			'nid'=> array('nid')
+		),
+		'primary key'=> array('nid'),
+	);
+}
+?>
