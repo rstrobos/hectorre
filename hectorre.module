@@ -1,13 +1,15 @@
 <?php
 
 //hook_init()
-function hello_init(){
+function hectorre_init(){
 	//drupal_set_message("Hello");
 
 }
-
-//hook_menu()
-function hello_menu(){
+/*
+ *Implements hook_menu()
+ *
+ */
+function hectorre_menu(){
 	$items=array();
 	
 	$items['addresident']=array(
@@ -15,8 +17,8 @@ function hello_menu(){
 		'title'=>'Add New Resident',
 		'description'=>'Add a new resident',
 		'page callback'=>'drupal_get_form',
-		'page arguments'=>array('hello_showResidentForm'),
-		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'page arguments'=>array('hectorre_showResidentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by the user staff
 		'access arguments'=>array('access content'),
 		'type'=>MENU_NORMAL_ITEM
 	);
@@ -26,21 +28,21 @@ function hello_menu(){
 		'title'=>'Add New Appointment',
 		'description'=>'Add a new appointment',
 		'page callback'=>'drupal_get_form',
-		'page arguments'=>array('hello_showAppointmentForm'),
-		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'page arguments'=>array('hectorre_showAppointmentForm'),
+		'access callback'=>'user_access',//todo make this only accessable by staff
 		'access arguments'=>array('access content'),
 		'type'=>MENU_NORMAL_ITEM
 
 
 	);
 
-	$items['meetingReminder']=array(
+	$items['attendance']=array(
 
-		'title'=>'Schedule Meeting Reminder',
+		'title'=>'Attendance Monitoring',
 		'description'=>'Click here to add a code which will be sent to the desired resident to collect attendence data',
 		'page callback'=>'drupal_get_form',
-		'page arguments'=>array('hectorre_showMeetingReminderForm'),
-		'access callback'=>'user_access',//todo make this only accessable by authenticated users
+		'page arguments'=>array('hectorre_showAttendanceForm'), 
+		'access callback'=>'user_access',//todo make this only accessable by staff
 		'access arguments'=>array('access content'),
 		'type'=>MENU_NORMAL_ITEM
 
@@ -51,22 +53,22 @@ function hello_menu(){
 /**
 * Implements the page that allows you to submit a new resident
 */
-function hello_showResidentForm(){
+function hectorre_showResidentForm(){
 	$form= array();
 
 	$form['name']=array(
 		'#type'=>'textfield',
-		'#title'=>'Enter the residents name',
+		'#title'=>'Enter the resident\'s name e.g. "John Smith":',
 	);
 	
 	$form['gmail']=array(
 		'#type'=>'textfield',
-		'#title'=>'Enter the residents gmail',
+		'#title'=>'Enter the resident\'s gmail e.g. "johnsmith.hectorre@gmail.com":',
 	);
 
 	$form['phone_number']=array(
 		'#type'=>'textfield',
-		'#title'=>'Enter the residents phone number to remind them of appointments',
+		'#title'=>'Enter the resident\'s phone number to remind them of appointments:',
 	//	'#rules'=>'numeric',
 	);
 	$form['submit']=array(
@@ -75,14 +77,14 @@ function hello_showResidentForm(){
 	);
 	
 
-	$form['#submit'][]='hello_showResidentForm_submit';
+	$form['#submit'][]='hectorre_showResidentForm_submit';
 	return $form;
 }
 
 /**
 * Shows the form for the appointment
 */
-function hello_showAppointmentForm(){
+function hectorre_showAppointmentForm(){
 	
 	$form=array();
 
@@ -114,27 +116,30 @@ function hello_showAppointmentForm(){
 	$reminders[]='None';
 	$reminders[]='30 mins before';
 	$reminders[]='1 hour before';
-/**	$form['reminder_one']= array(
-		'#title' =>t('Reminder One') ,
+	$form['reminder']= array(
+		'#title' =>t('Set Reminder Time') ,
 		'#type' => 'select',
 		'#desciption' =>'Specify how long before the appointment a reminder will be sent' ,
 		'#options' => $reminders,
 
 	);
 	
+	$reminder_types=array();
+	$reminder_types[]='Text Message';
+	$reminder_types[]='Voice Call';
 
-	$form['reminder_two']= array(
-		'#title' =>t('Reminder Two') ,
+	$form['reminder_type']= array(
+		'#title' =>t('Select reminder Type') ,
 		'#type' => 'select',
 		'#desciption' =>'Specify how long before the appointment a second reminder will be sent' ,
-		'#options' => $reminders,
+		'#options' => $reminder_types,
 
 	);
-*/	
+	
 	$form['description']=array(
 		
 		'#type'=>'textfield',
-		'#title'=>'Enter Appointment Description'
+		'#title'=>'Enter Appointment Description e.g. "Doctor\'s appointment with Dr. Johnson"'
 	);
 	
 /**	$form['location']=array(
@@ -179,7 +184,7 @@ function hello_showAppointmentForm(){
 	return $form;
 }
 
-function hectorre_showMeetingReminderForm(){
+function hectorre_showAttendanceForm(){
 
 	$form=array();
 
@@ -191,7 +196,7 @@ function hectorre_showMeetingReminderForm(){
 		
 	$users=array();	
 	
-	$user[]='---SELECT---';
+//	$user[]='---SELECT---';
 	while ($record = $result->fetchAssoc()){
 		if ($record['name']!="admin" And  $record['name']!="staff" And $record['uid']!=0){
 		$users[]=$record['name'];	
@@ -200,8 +205,56 @@ function hectorre_showMeetingReminderForm(){
 
 
 
+/*
+
+
+TESTING
+
+*/
+
+
+		$test_query=db_select('scheduled_meetings','m');
+	//	$query->condition('m.entity_id',$resident_id);
+		watchdog('hectorre','gets past query');
+		$test_query-> fields('m',array('phone_number','confirmation_code', 'date'));
+		
+	//	watchdog('hectorre','gets past fields');
+		$test_result=$test_query->execute();
+
+	$con_code=array();
+
+	while ($test_record = $test_result->fetchAssoc()){
+	
+		$con_code[]=$test_record['confirmation_code'];	
+
+	}
+
+
+	$form['test']= array(
+		'#title' =>t('hould be list of confirmation codes') ,
+		'#type' => 'select',
+		'#desciption' =>'Select the resident who you would like to send the confirmation code.' ,
+		'#options' => $con_code,
+
+	);
+
+
+/*
+
+END TESTING
+
+*/
+
+
+
+
+
+
+
+
+
 	$form['resident_name']= array(
-		'#title' =>t('Resident Name') ,
+		'#title' =>t('Select Resident responsible for taking attendance') ,
 		'#type' => 'select',
 		'#desciption' =>'Select the resident who you would like to send the confirmation code.' ,
 		'#options' => $users,
@@ -211,7 +264,7 @@ function hectorre_showMeetingReminderForm(){
 	$form['confirmation_code']=array(
 		
 		'#type'=>'textfield',
-		'#title'=>'Enter Confirmation Code'
+		'#title'=>'Select an Attendance code to send e.g. "lamp39"'
 	);
 
 	date_default_timezone_set('America/New_York');
@@ -222,7 +275,7 @@ function hectorre_showMeetingReminderForm(){
 	
 	$form['time']= array(
 		'#type'=>'date_select',
-		'#title'=> t('Time to send reminder'),
+		'#title'=> t('Enter time of event'),
 		'#default_value'=>$date,
 		'#date_format'=>$format,
 		'#date_label_position'=> 'within'
@@ -233,7 +286,7 @@ function hectorre_showMeetingReminderForm(){
 		'#value'=>'Submit'
 	);
 
-	$form['#submit'][]='hectorre_showMeetingForm_submit';
+	$form['#submit'][]='hectorre_showAttendanceForm_submit';
 	return $form;
 }
 /**
@@ -245,9 +298,9 @@ function hectorre_showAppointmentForm_submit($form, &$form_state){
 	if($form_state['values']['description']==''){
 		form_set_error('description','Description can not be empty');
 	}
-	elseif ($form_state['values']['location']==''){
+/*	elseif ($form_state['values']['location']==''){
 		form_set_error('location','Location can not be empty');
-	}
+	}*/
 	elseif ($form_state['values']['start_date']>=$form_state['values']['end_date']){
 		form_set_error('start_date','Start Date must be before End date');
 
@@ -344,7 +397,7 @@ function hectorre_showAppointmentForm_submit($form, &$form_state){
 
 
 
-function hello_showResidentForm_submit($form, &$form_state){
+function hectorre_showResidentForm_submit($form, &$form_state){
 	//todo share this calendar with the users gmail
 
 	//this currently creates a new calendar on the shared calendar 
@@ -409,15 +462,15 @@ function hello_showResidentForm_submit($form, &$form_state){
 
 ///below lies code known terrible even to the worst programmer
 //these lines also dont do anything
-	$pass=user_password(8);
-	$form_state['values']['pass']['pass1']=$pass;
-	$form_state['values']['pass']['pass2']=$pass;
-	$form_state['values']['op']=t('Create new account');
-	$form_state['values']['numMonths']=0;
+//	$pass=user_password(8);
+//	$form_state['values']['pass']['pass1']=$pass;
+//	$form_state['values']['pass']['pass2']=$pass;
+//	$form_state['values']['op']=t('Create new account');
+//	$form_state['values']['numMonths']=0;
 	//drupal_form_submit('user_register', $form_state);
 	
 }
-function hectorre_showMeetingForm_submit($form, &$form_state){
+function hectorre_showAttendanceForm_submit($form, &$form_state){
 	
 	
 
@@ -429,6 +482,9 @@ function hectorre_showMeetingForm_submit($form, &$form_state){
 	}
 	elseif ($form_state['values']['time']<$date){
 		form_set_error('start_date','Meeting must be in the future');
+	}
+	elseif ($form_state['values']['resident_name']==''){
+		form_set_error('resident_name','A resident must be selected');
 	}
 	else{
 	
@@ -477,7 +533,65 @@ function hectorre_showMeetingForm_submit($form, &$form_state){
 	
 		}
 	}
-/**
+		$host='localhost';
+		$username='hectorre';
+		$password='55laKest1';
+		$dbname='hectorre_drup168';
+		$con=mysqli_connect($host,$username, $password, $dbname);
+		if (mysqli_connect_errno()){
+			watchdog('hectorre','in adding meeting, failed to connnect to MySQL: '.mysqli_connect_error());
+		}
+
+//		$connection=mysqli_query($con, "INSERT INTO dr_scheduled_meetings (confirmation_code, phone_number, date) VALUES (".$form_state['values']['confirmation_code']." , ".$phone_number." , ".$form_state['values']['time']);
+	
+		$time=$form_state['values']['time'];
+		$confirmation_code=$form_state['values']['confirmation_code'];
+		$sql= "INSERT INTO dr_scheduled_meetings (confirmation_code, phone_number, date) VALUES ('$confirmation_code','$phone_number', '$time')";
+	
+		if (!mysqli_query($con,$sql)){
+			$message='Error'.mysqli_error($con).' Please contact your System Administrator';
+			watchdog('hectorre',$message);
+		}
+		else {
+			$message='Congratulations, the confirmation code '.$confirmation_code.' will be sent at '.$time.' to the phone number '.$phone_number;
+			 watchdog('hectorre',$message);
+		}
+
+		mysqli_close($con);
+/*
+
+TESTING
+*/
+				
+				$call= new VoipCall();		
+	//			$phone_number=8305159819;
+				$call->setDestNumber($phone_number);
+				$text="this is coming from inside the attendance and not cronYou have been chosen to distribute the confirmation code at this meeting. The code is ".$confirmation_code; 
+				$script= new VoipScript('confirmation_code');
+				$network="SMS";
+				$script->addSendText($text);
+			//	$script->addSay('Hello world');
+			//	$script->addHangup();
+				$call->setScript($script);
+				$result=voip_text($text, $call);
+				if ($result){
+					watchdog('hectorre', "call was successful");
+				}
+				else {
+					$msg=$call->getErrorMessage();
+					$details= array('@msg'=>$msg);
+					watchdog('hectorre','Call failed with following error: @msg', $details, WATCHDOG_WARNING);
+
+
+
+					}
+
+///	$message= $connection? "the query was successful" : "the query was unsuccesful".mysqli_connect_error();
+//		watchdog('hectorre',$message);
+	//	mysqli_close($con);
+//		drupal_set_message($message);
+//		$sql="CREATE TABLE dr_scheduled_meetings(confirmation_code CHAR(30), phone_number CHAR(20), date Timestamp)";
+/**	
 
 	$record = new StdClass();
 	$record->confirmation_code= $form_state['values']['confirmation_code'];
@@ -487,9 +601,9 @@ function hectorre_showMeetingForm_submit($form, &$form_state){
 	drupal_set_message("Congratulations, a reminder will be sent at ".$form_state['values']['time']);
 
 */
-	$table_name='scheduledMeetings';
-	$table=db_table_exists($table_name);
-	drupal_set_message($table ? "true" : "false");
+//	$table_name='scheduled_meetings';
+//	$table=db_table_exists($table_name);
+	drupal_set_message($message);
 	}
 
 }
@@ -501,59 +615,107 @@ function hectorre_cron(){
 
 	$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
 	
-	if (time() >=variable_get('cron_hectorre_next_execution', 0)){
+//	if (time() >=variable_get('cron_hectorre_next_execution', 0)){
 		//sends appointment reminders
-		watchdog('cron_hectorre','cron_hectorre appointment ran');
+		watchdog('cron_hectorre','cron_hectorre appointment ran before gauth');
 		$account_name= gauth_account_load('HectorReyes');
 	
-
+/*
 		date_default_timezone_set('America/New_York');
 		$start_date= date('Y-m-d H:i', time());
 		$end_date=date('Y-m-d H:i', time()+60*60);
 	
 		$gmail_account_email='staff.hectorre@gmail.com';
-		$events= gcal_find_events($start_date, $end_date, $gmail_account_email);
+		try{
+
+			$events= gcal_find_events($start_date, $end_date, $gmail_account_email);
 
 
-		$events = gcal_event_get($event_id, $calendar_id, $account_name);
-	//	drupal_set_message($events);
-		foreach($events as $event){
-		//	if ($event['date']<
+			$events = gcal_event_get($event_id, $calendar_id, $account_name);
+
+			//	drupal_set_message($events);
+			$i=0;
+			foreach($events as $event){
+				if (i==0){
+					watchdog('hectorre',$events);
+					$i=$i+1;
+				}
+			//	if ($event['date']<
 			//check if the event occurs in the next X mins and if it does, call a script from voip
+			}
+		} catch (Exception $e) {
+			
+					watchdog('hectorre',$e->getMessage());
 		}
+		
 
-
-
-
+*/
 
 
 		//sends out meeting codes
 
 
-		watchdog('cron_hectorre','cron_hectorre meeting ran');
+		watchdog('cron_hectorre','cron_hectorre meeting ran after gauth');
 		$query=db_select('scheduled_meetings','m');
 	//	$query->condition('m.entity_id',$resident_id);
-		$query-> fields('m',array('phone_number','confirmation_code', 'time'));
+		watchdog('hectorre','gets past query');
+		$query-> fields('m',array('phone_number','confirmation_code', 'date'));
+		
+	//	watchdog('hectorre','gets past fields');
 		$result=$query->execute();
 	
+	//	watchdog('hectorre','gets past result');
 		date_default_timezone_set('America/New_York');
-		$date= date('Y-m-d H:i', time()+30*60); //if the meeting occurs within the next half hour
-		foreach($result as $meeting){
-			if ($meeting['time']<$date){
+		$date= date('Y-m-d H:i', time()+60*60); //if the meeting occurs within the next half hour
+		$count=0;
+		watchdog('hectorre_debug', 'right before foreach loop');
+	//	watchdog('hectorre_debug', $result);
+		
+		//new code
+		global $user;
+		$original_user= $user;
+		$old_state=drupal_save_session();
+		drupal_save_session(FALSE);
+		$user= user_load(1);
+
+
+		while($meeting=$result->fetchAssoc()){
+			
+			if ($meeting['date']<$date){
 				//todo insert the voip API that performs the actual call
-				/**$call= new VoipCall();		
-				$phone_number=$result['phone_number'];
+//				watchdog('hectorre',$count);
+				$call= new VoipCall();		
+	
+				$phone_number=$meeting['phone_number'];
 				$call->setDestNumber($phone_number);
-				$text="You have been chosen to distribute the confirmation code at this meeting. The code is ".$result['confirmation_code']; 
-				
-				$script->addSentText($text,$phone_number,'SMS', "Hector Reyes House");
-				
-*/
+				$text="This is The Hector Reyes House. You have been chosen to distribute the confirmation code at this meeting which is scheduled for ".$meeting['date']." The code is".$meeting['confirmation_code']; 
+				$script= new VoipScript('confirmation_code');
+				$network="SMS";
+
+
+
+				$call->setScript($script);
+				$success=voip_text($text,$call);
+				if ($success){
+					watchdog('hectorre_cron_test', "call was successful confirmation code sent was ".$meeting['confirmation_code']);
 				}
+			else {
+					$msg=$call->getErrorMessage();
+					$details= array('@msg'=>$msg);
+					watchdog('hectorre_cron_test','Call failed with following error: @msg', $details, WATCHDOG_WARNING);
+
+
+
+				}
+
+			}
 		}
 
 		watchdog('cron_hectorre','cron_hectorre meeting got through the database query');
 
+//new code
+		$user=$original_user;
+		drupal_save_session($old_state);
 
 
 
@@ -563,10 +725,9 @@ function hectorre_cron(){
 
 
 
-
-
-		variable_set('cron_hectorre_next_execution', time()+$interval);
-	}
+	//	variable_set('cron_hectorre_next_execution', time()+$interval);
+//	}
+	watchdog('hectorre_debug','gets to end');
 }
 /**
 function cron_hectorre_meeting_cron(){
@@ -605,10 +766,26 @@ function hectorre_uninstall(){
   */
 function hectorre_enable(){
 	
-	$table_name='scheduledMeetings';
+	$table_name='dr_scheduledMeetings';
 	if(db_table_exists($table_name)==FALSE){
-		drupal_install_schema('hectorre');
+	//	drupal_install_schema('hectorre');
 	//	drupal_set_message("code ran");
-		//watchdog('hectorre', 'enable ran');
+		watchdog('hectorre', 'enable ran');
+		$host='localhost';
+		$username='hectorre';
+		$password='55laKest1';
+		$dbname='hectorre_drup168';
+		$con=mysqli_connect($host,$username, $password, $dbname);
+		if (mysqli_connect_errno()){
+			watchdog('hectorre','failed to connnect to MySQL: '.mysqli_connect_error());
+		}
+		$sql="CREATE TABLE dr_scheduled_meetings(confirmation_code CHAR(30), phone_number CHAR(20), date Timestamp)";
+		
+		if (mysqli_query($con,$sql)){
+			watchdog('hectorre', 'Table scheduled_meetings created sucessfully');
+		}
+		else {
+			watchdog('hectorre', 'Error creating scheduled_meetings: '.mysqli_error($con));
+		}
 	}
 }
