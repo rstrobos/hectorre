@@ -1,10 +1,7 @@
 <?php
 
 //hook_init()
-function hectorre_init(){
-	//drupal_set_message("Hello");
 
-}
 /*
  *Implements hook_menu()
  *
@@ -50,6 +47,53 @@ function hectorre_menu(){
 	);
 	return $items;
 }
+/**
+ * Adds a custom login page
+ *
+ */
+function hectorre_page_alter(&$page){
+	$page['sidebar_first']['user_login']['help']=array(
+		'#weight' => -10,
+		'#markup' => t('Here is the markup Text'),
+	);
+}
+
+/*
+function hectorre_menu_alter(&$callbacks) {
+
+	$callbacks['user']['page callback']='hectorre_user_page';
+}
+*/
+/**
+ *
+ *
+ */
+/*
+function hectorre_user_page(){
+	global $user;
+	if ($user->uid){
+		menu_set_active_item('user/'.$user->uid);
+		return menu_execute_active_handler();
+	}else{
+		return theme('user_login', drupal_get_from('user_login'));
+	}
+}
+*/
+/*
+function hectorre_theme($existing, $type, $theme, $path){
+	watchdog('theming','the path variable is '.$path);
+	$themes=array();
+	
+	$themes= array(
+			'user_login'=> array(
+				'path'=>$path.'templates',
+				'template'=> 'user_login',
+				'arguments'=>array('form'=>NULL)
+			)
+		);
+
+}
+*/
 /**
 * Implements the page that allows you to submit a new resident
 */
@@ -117,7 +161,7 @@ function hectorre_showAppointmentForm(){
 	$reminders[]='30 mins before';
 	$reminders[]='1 hour before';
 	$form['reminder']= array(
-		'#title' =>t('Set Reminder Time') ,
+		'#title' =>t('Set Reminder Time (Amount of time before appointment begins)') ,
 		'#type' => 'select',
 		'#desciption' =>'Specify how long before the appointment a reminder will be sent' ,
 		'#options' => $reminders,
@@ -211,7 +255,7 @@ function hectorre_showAttendanceForm(){
 TESTING
 
 */
-
+/*
 
 		$test_query=db_select('scheduled_meetings','m');
 	//	$query->condition('m.entity_id',$resident_id);
@@ -238,7 +282,7 @@ TESTING
 
 	);
 
-
+*/
 /*
 
 END TESTING
@@ -328,7 +372,7 @@ function hectorre_showAppointmentForm_submit($form, &$form_state){
 	
 		$result= $query->execute();
 		
-		$resident_id=5;		
+		$resident_id=5;		//initialize res id
 
 
 		$count=0;
@@ -407,8 +451,8 @@ function hectorre_showResidentForm_submit($form, &$form_state){
 	if ($form_state['values']['gmail']==''){
 		form_set_error('name','Location can not be empty');
 	}
-	if (!is_numeric($form_state['values']['phone_number'])){
-		form_set_error('phone_number', 'Phone number is invalid');
+	if (!is_numeric($form_state['values']['phone_number']) Or strlen($form_state['values']['phone_number'])!=10){
+		form_set_error('phone_number', 'Phone number is invalid. Phone number must be 10 digits');
 	}
 	else{
 	
@@ -562,7 +606,7 @@ function hectorre_showAttendanceForm_submit($form, &$form_state){
 
 TESTING
 */
-				
+				/*
 				$call= new VoipCall();		
 	//			$phone_number=8305159819;
 				$call->setDestNumber($phone_number);
@@ -585,7 +629,7 @@ TESTING
 
 
 					}
-
+*/
 ///	$message= $connection? "the query was successful" : "the query was unsuccesful".mysqli_connect_error();
 //		watchdog('hectorre',$message);
 	//	mysqli_close($con);
@@ -612,13 +656,24 @@ TESTING
   *
  */
 function hectorre_cron(){
-
-	$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
+	$count =variable_get('count');
 	
+	if ($count==null){
+		$count=0;
+	}
+	$count=$count+1;
+	variable_set('count',$count);
+	//watchdog('cron_frequency',"The current count is ". $count);
+	//$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
+
+
+	$current= date('Y-m-d H:i', time()); //if the meeting occurs within the next half hour
+	watchdog('rohan', "Cron ran at ".$current);	
+//	watchdog('rohan', "The interval is ".$interval);	
 //	if (time() >=variable_get('cron_hectorre_next_execution', 0)){
 		//sends appointment reminders
-		watchdog('cron_hectorre','cron_hectorre appointment ran before gauth');
-		$account_name= gauth_account_load('HectorReyes');
+	//	watchdog('cron_hectorre','cron_hectorre appointment ran before gauth');
+	//	$account_name= gauth_account_load('HectorReyes');
 	
 /*
 		date_default_timezone_set('America/New_York');
@@ -658,7 +713,7 @@ function hectorre_cron(){
 		watchdog('cron_hectorre','cron_hectorre meeting ran after gauth');
 		$query=db_select('scheduled_meetings','m');
 	//	$query->condition('m.entity_id',$resident_id);
-		watchdog('hectorre','gets past query');
+	//	watchdog('hectorre','gets past query');
 		$query-> fields('m',array('phone_number','confirmation_code', 'date'));
 		
 	//	watchdog('hectorre','gets past fields');
@@ -677,11 +732,11 @@ function hectorre_cron(){
 		$old_state=drupal_save_session();
 		drupal_save_session(FALSE);
 		$user= user_load(1);
-
+		$day=date('Y-m-d H:i',time()-60*60);
 
 		while($meeting=$result->fetchAssoc()){
 			
-			if ($meeting['date']<$date){
+			if ($meeting['date']<$date And $meeting['date']>$day){
 				//todo insert the voip API that performs the actual call
 //				watchdog('hectorre',$count);
 				$call= new VoipCall();		
@@ -698,6 +753,7 @@ function hectorre_cron(){
 				$success=voip_text($text,$call);
 				if ($success){
 					watchdog('hectorre_cron_test', "call was successful confirmation code sent was ".$meeting['confirmation_code']);
+					watchdog('rohan', "send text to ".$phone_number." with confirmation code ". $meeting['confirmation_code']." scheduled for ".$meeting['date']);
 				}
 			else {
 					$msg=$call->getErrorMessage();
@@ -728,6 +784,7 @@ function hectorre_cron(){
 	//	variable_set('cron_hectorre_next_execution', time()+$interval);
 //	}
 	watchdog('hectorre_debug','gets to end');
+
 }
 /**
 function cron_hectorre_meeting_cron(){

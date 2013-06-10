@@ -1,5 +1,4 @@
 name= Hectorre
 core= 7.x
-description = This is a test module which will be extended to provide functionality extending the webform module so that google calendar events will be able to be created 
-when webforms are filled out
+description = This module is used to provide functionality extending the webform module so that google calendar events will be able to be created when webforms are filled out. It also implements parts of the Drupal VoIP module which allow it outbound text messages to be sent.
 
