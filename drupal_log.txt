@@ -1,0 +1,98 @@
+ihtfp
+8:54 I basically have on question which is regarding how to resolve variables: I listed it http://stackoverflow.com/questions/17905641/converting-text-message-metadata-to-php-variables-voip-drupal 
+8:54 any chance you could help?
+ekes
+8:56 Still not solved then.
+ihtfp
+8:56 yeah did i talk to you about it before?
+8:56 Its a huge pain. The only thing preventing me from finishing up some work
+8:57 I tried both the runGoto and runGosub methods as well as using the t('%variable_name')
+ekes
+9:00 Right, yes it was me. I've got code around now so can have a look.
+ihtfp
+9:01 awesome thanks!
+ekes
+9:02 First off. You will see in the voipscript examples there are ways of calling functions with arguments.
+9:02 When you put in a ^ it evaluates the expression.
+ihtfp
+9:03 right yeah I've used the lowercase funct
+ekes
+9:03 So there are lots of addSet('varname', '^_external_function(%variable_argument)');
+9:03 It will run _extrnal_function with %variable_argument and then use that to set the variable.
+9:04 Another way round is....
+ihtfp
+9:04 right but that allows you to access the variable in the script by doing @var_name but not use the variable outside the script
+ekes
+9:05 You access %variable_argument in the _external_function()
+9:05 The other way is to
+9:05  $script->addGosub('script_name', array('argument' => '%argument_variable'));
+9:05 Then write another script than then uses that argument.
+9:06 Example of this is how voipextension passes the extension value around.
+ihtfp
+9:06 so I can do $php_var = $script->addSet('test', _external_function('%inbound_text_origin');
+9:06 and then $php_var will equal the caller number?
+9:08 because in my specific case, I'm setting a variable in php based on the value of %inbound_text_origin so I need it resolved in php and effecting the control flow of the script itself isnt helpful
+ekes
+9:09 '^_external_function(%inbount_text_origin)';
+9:09 will call _external_function(with_variable_value_inbound_text_origin);
+9:10 if you want to set a value in the script... erm... you need to change the way you're doing it.
+9:10 You want to use $php_var in a subroutine or called function.
+ihtfp
+9:18 $$script ->addGotoIf('res_id','^%inbound_text_contents == $curr_num');
+                                $script -> addGoto('skip');
+                                $script->addLabel('res_id');
+                                $script->addSet('resident_id', "^$record['entity_id']");
+                                $script->addLabel('skip');
+9:18                                 $script ->addGotoIf('res_id','^%inbound_text_contents == $curr_num');
+                                $script -> addGoto('skip');
+                                $script->addLabel('res_id');
+                                $script->addSet('resident_id', "^$record['entity_id']");
+                                $script->addLabel('skip');
+9:19 and then $script->addSendText(t("res id: %resident_id)); should work?
+ekes
+9:24 Looking to see if I can see somewhere it will obviously trip up. $curr_num is the same all the way through I assume, so that's fine.
+ihtfp
+9:24 im getting Notice: Undefined variable: curr_num in eval() (line 1 of /home/hectorre/public_html/sites/all/modules/voipdrupal/modules/voipcall/voipscript.inc(1254) : eval()'d code).
+9:25 $curr_num = '+1'.$record['field_phone_number_value'];
+9:25 I have above it
+ekes
+9:25 Not sure it's going to be set.
+ihtfp
+9:26 no i dont think it is
+ekes
+9:26 Why can't you pass it in as a voipscript variable.
+ihtfp
+9:26 $script->addSet('current_num', $curr_num);
+9:26 Im adding this line
+9:26  $script ->addGotoIf('res_id','^%inbound_text_contents == %current_num');
+9:26 and changing that
+ekes
+9:26 But why not send $curr_num as an argument to the script in the first place.
+ihtfp
+9:27 what do you mean?
+ekes
+9:30 Well you can use a variable in a script, but you need to treat it as a constant because it will have the same value through the whole script. So if you pass it in to the script function itself _script_name($value) then $value is the $value for the whole script.
+ihtfp
+9:33 if I try to iterate through my whole script breaks and nothing sends
+9:34 do i have to unset
+9:34 the variable
+ekes
+9:36 If you want to iterate you have to think. This is going to be evaluated and turned into a script.
+ihtfp
+9:36 whats the difference between addSet and setVar ?
+ekes
+9:37 So like: for ($i = 1; $i < 4; $i++) { $script->addSay($i); } will work. But it will be:
+9:37  $script->addSay(1); $script->addSay(2); $script->addSay(3);
+9:37 And that is what is evaluated, not the look.
+9:37 loop.
+9:38 So if you try and do anything in the loop you have to understand it as making a longer script.
+9:38 If that make sense.
+ihtfp
+9:38 alright so the php is going to generate the script which then runs independently of the php
+9:38 makes sense
+9:42 so does the script break if you try to set the same variable without unsetting? it seems to be behaving like that
+ekes
+9:43 Could be, not sure of the internals at that level.
+9:46 mlncn left the room (quit: Ping timeout: 256 seconds).
+ihtfp
+10:03 hey thanks a lot ekes im finally making some progress on this script after hacking unsuccessfully for the last couple days

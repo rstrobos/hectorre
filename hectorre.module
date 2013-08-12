@@ -609,7 +609,7 @@ function hectorre_showAttendanceForm_submit($form, &$form_state){
 		foreach($form_state['values']['meeting_members'] as $sel){
 			$uid = idFromNum($sel);
 			if ($uid !=$resident_id){
-				$meeting_sql = "INSERT INTO dr_meeting_members (uid, meeting_id, has_replied) VALUES ('$uid','$meeting_id', 0 )";
+				$meeting_sql = "INSERT INTO dr_meeting_members (uid, meeting_id, meeting_time, has_replied, confirmation_code) VALUES ('$uid','$meeting_id', '$time', 0, '$confirmation_code' )";
 				if(!mysqli_query($con, $meeting_sql)){	
 					$message='Error'.mysqli_error($con).' Please contact your System Administrator';
 					watchdog('hectorre',$message);
@@ -647,12 +647,28 @@ function hectorre_cron(){
 	variable_set('count',$count);
 	//watchdog('cron_frequency',"The current count is ". $count);
 	//$interval = variable_get('cron_hectorre_interval', 30*60); //run every half hour
+	
+
+	
+
+
 
 
 	$current= date('Y-m-d H:i', time()); //if the meeting occurs within the next half hour
 	watchdog('rohan', "Cron ran at ".$current);	
 
-
+	if (date('j') == 1){		
+		$checkin_query = db_select('meeting_members', 'x');
+		$checkin_query->fields('x', array('meeting_time','uid','meeting_id','confirmation_code'));
+		$checkin_res = $checkin_query->execute();
+		while ($rec = $checkin_res->fetchAssoc()){
+			if (date('m', $rec['meeting_time']) == date('m', time())){
+				//do stuff
+			}
+		}
+			
+		
+	}
 	//sends appointment reminders
 
 	$appt_query=db_select('gcal_events','m');
@@ -722,34 +738,6 @@ function hectorre_cron(){
 //*/
 		}
 	}
-/**	//get the events from google and check if they are in the next hour, send reminder
-	try{
-		$events= gcal_find_events($start_date, $end_date, $gmail_account_email);
-		$events = gcal_event_get($event_id, $calendar_id, $account_name);
-
-		//	drupal_set_message($events);
-		$i=0;
-		foreach($events as $event){
-			if (i==0){
-				watchdog('hectorre',$events);
-					$i=$i+1;
-				}
-			//	if ($event['date']<
-			//check if the event occurs in the next X mins and if it does, call a script from voip
-			}
-		} catch (Exception $e) {
-			
-					watchdog('hectorre',$e->getMessage());
-		}
-		
-
-
-*/
-
-		//sends out attendance codes
-
-
-		watchdog('cron_hectorre','cron_hectorre meeting ran after gauth');
 		$query=db_select('scheduled_meetings','m');
 		$query-> fields('m',array('phone_number','confirmation_code', 'date'));
 		$result=$query->execute();
@@ -886,7 +874,8 @@ function hectorre_enable(){
 */
 function hectorre_voipscript_get_script_names(){
 	$script_names[] = 'hectorre_inbound_text_script';
-
+//	$script_name[] = 'set_vars';
+	$script_names[] = 'test_script';
 	return $script_names;
 }
 
@@ -898,15 +887,36 @@ function hectorre_voipscript_load_script($script_name, $options = NULL) {
 	switch($script_name) {
 		default:
 			break;
-		case 'hectorre_inbound_text_script':
+		case 'test_script':
+			$script = new VoipScript('test_script');
+			$script ->addSendText(t('please work'));
+			break;
+	/*	case 'set_vars':
+			$script = new VoipScript('set_vars');
+			$phone_number = '%inbound_text_origin';
+			$script->runReturn();	
+			break;
+	*/	case 'hectorre_inbound_text_script':
 
 			$script = new VoipScript('hectorre_inbound_text_script');
+	//		$script->addSendText('wtf');
 			$script->addSet('msg','^strtolower(%inbound_text_contents)');
 			$script->setVar('phone_number', '^strtolower(%inbound_text_origin)');
-	//		$phone_num = $script->getVar('%inbound_text_origin');
+			$phone_number_test = array('@input'=>'%inbound_text_origin');
+			//$script->addSendText('phone number is %phone_number');
+			watchdog('helloworld', 'phone num test: '.implode($phone_number_test));
+			$phone_number = t('@input', $phone_number_test);
+			watchdog('helloworld', 'phone NUmber: '.$phone_number);
 		//	$script->addGoToIf('test', ^substr(%msg, 2) == '83051819');
 	//		$phone_numberC= substr($phone_num, 2);
-			$phone_number = $script->getVar('inbound_text_origin');
+		//	$script->runGosub('set_vars');
+		//	$script->addLabel('return');
+		//	$phone_number = $script->getVar('inbound_text_origin');
+		///	$script->addGoto('past');
+		//	$script->addLabel('setVars');
+		//	$phone_number = '%inbound_text_origin';	
+		//	$script->addGoto('return');
+		//	$script->addLabel('past');
 		//	$phone = substr($phone_number, 2);
 			$phone_query=db_select('field_data_field_phone_number','c');
 			$phone_query-> fields('c',array('entity_id','field_phone_number_value'));
@@ -914,22 +924,127 @@ function hectorre_voipscript_load_script($script_name, $options = NULL) {
 			$resident_id = null;
 			while ($record = $result->fetchAssoc()){
 				$curr_num = '+1'.$record['field_phone_number_value'];
-				watchdog('voipscript', '+1'.$record['field_phone_number_value']);
+			//	$script->addSendText('here');
+				$script->addSet('current_num', $curr_num);		
+				$script->addSet('curr_id', $record['entity_id']);
+			//	watchdog('voipscript', '+1'.$record['field_phone_number_value']);
 				$boo = $curr_num == $phone_number;
-				watchdog('voipscript', $phone_number.$curr_num.(int)$boo);
-				if ($curr_num==$phone_number){
-					$resident_id = $record['entity_id'];
-					
-				}
+			//	watchdog('voipscript', $phone_number.$curr_num.(int)$boo);
+	//			$script->addSendText('current num is: %current_num and inbound text: %inbound_text_origin');
+				$script->addSet('another', '^%current_num == %inbound_text_origin');
+			//	$script->addSendText('b: %another');
+				$script->addGotoIf('set_res','%another');
+				$script->addUnset('another');
+
+				$script->addGoto('skip');
+				$script->addLabel('set_res');
+			//	$script->addSendText('control flow working');
+			//	$script->addSendText('curr id: %curr_id');
+				$script->addGoto('get_username');
+				$script->addLabel('skip');
+
+		//		$script->addSet('b', '^%inbound_text_origin == %current_num');
+		//		$script->addSendText('boolean is %b');
+		//		$script->addUnset('b');
+		//		$script ->addGotoIf('res_id','^%inbound_text_contents == %current_num');
+				$script->addUnset('current_num');
+		//		$script -> addGoto('skip');
+		//		$script->addLabel('res_id');
+		//		$script->addSet('resident_id', '^$record[\'entity_id\']');
+		//		$script->addLabel('skip');
+		#		if ($curr_num==$phone_number){
+		#			$resident_id = $record['entity_id'];
+		#			
+		#		}
 			}
-			$script->addSendText(t("ResID = ".$resident_id."Thanks. Your response has been recorded. You sent %inbound_text_contents and was from ".$phone_number));		
-			$script->addGoto('test');
-			$script->addLabel('setVars');
+			//if script gets here, iterated through whole database without finding the user
+			$script->addSendText('got here');
+			$script->addGoto('user_not_registered');
+			watchdog('heloworld', 'gothere');
+
+
+//			$script->addLabel('get_username');
 			
+			$query = db_select('users','u');
+              		$query->fields('u',array('uid','name'));
+              		$result= $query->execute();
+
+
+		
+			$script->addLabel('get_username');
+        		while ($record = $result->fetchAssoc()){
+				watchdog('voipDrup', 'first rec:'.implode($record));
+				$script->addSet('db_id', $record['uid']);
+				$script->addSet('db_name', $record['name']);
+  				$script->addSet('user_match', '^%db_id == %curr_id');
+	///			$script->addSendText('db_id: %db_id curr_id: %curr_id');
+				$script->addGotoIf('check_in', '%user_match'); //change this to 'check_in'
+		//		$script->addGoto('no_match');
+				//this code runs if there is a match
+		//		$script->addLabel('set_name');
+		//		$script0>addSet('username', $record[
+		//		$script->addGoto('end');
+		//		$script->addLabel('no_match');    	 	
+			}
+	//NEW STUFF
+			$script->addLabel('check_in');
+			$checkin_query = db_select('meeting_members', 'x');
+			$checkin_query->fields('x', array('meeting_time','uid','meeting_id','confirmation_code'));
+			$checkin_res = $checkin_query->execute();
+			while ($rec = $checkin_res->fetchAssoc()){
+				watchdog('voipDrupal', "record: ".implode($rec));
+				$script->addSet('check_id', $rec['uid']);
+				//$script->addSendText($rec['meeting_id']);
+				$script->addSet('confirmation_code', $rec['confirmation_code']);
+				$script->addSet('meeting_time', $rec['meeting_time']);
+			//	$script->addSendText('check id: %check_id confirm code: %confirmation_code meeting_time: %meeting_time curr id: %curr_id');
+				$script->addSet('check_bool', '^%check_id == %curr_id');
+				$script->addGotoIf('time_id_check', '%check_bool');			
+			}
 			
-			$script->addLabel('test');
-			$script->addSendText(t("sent no matter what"));
+			$script->addGoto('not_in_meeting');
+			$script->addLabel('time_id_check');
+			$script->addSet('is_correct_confirmation_code', '^%confirmation_code != %inbound_text_contents');
+		//	$script->addSendText('con code: %confirmation_code inbound text: %inbound_text_contents');
+			$script->addGotoIf('incorrect_confirmation_code', '%is_correct_confirmation_code');
+			$script->addSet('time_now', date('Y-m-d H:i', time()-4*60*60));
+			$script->addSet('is_correct_time', '^%meeting_time < %time_now');
+		//	$script->addSendText('[DEBUG] meeting time: %meeting_time curr time (minus 60min): %time_now');
+			$script->addGotoIf('incorrect_time', '%is_correct_time');
+			$script->addGoto('end');
 			
+			$script->addGoto('skipme');
+			$script->addLabel('incorrect_confirmation_code');
+			$script->addSendText(t('Sorry, %db_name your confirmation code is incorrect.'));
+			$script->addLabel('skipme');
+
+			$script->addGoto('skipmeOne');
+			$script->addLabel('incorrect_time');
+			$script->addSendText('Sorry, %db_name the meeting has already ended.');
+			$script->addLabel('skipmeOne');
+
+//END NEW STUFF	
+//		$new_date = date('Y-m-d H:i', time()-60*60);
+// 665         $end_date=date('Y-m-d H:i', time()+60*60);
+			$script->addGoto('skiptwo');
+			$script->addLabel('end');
+			$script->addSendText(t("Thanks, %db_name . Your response has been recorded and you have been marked at attending the meeting at %meeting_time that has the confirmation code: %confirmation_code"));		
+			$script->addLabel('skiptwo');
+			//	$script->addLabel('test');
+//			$script->addSendText(t("sent no matter what"));
+				
+			$script->addGoto('registered');
+			//runs if user isnt registered
+			$script->addLabel('user_not_registered');
+			$script->addSendText('Sorry you need to be registered');
+			
+			$script->addLabel('registered');
+//NEW STUFF
+			$script->addGoto('in_meeting');
+			//sent if the resident is not in the meeting
+			$script->addLabel('not_in_meeting');
+			$script->addSendText(t('Sorry, %db_name you don\'t seem to be scheduled for this meeting'));
+			$script->addLabel('in_meeting');
 			break;
 	}
 	return $script;
